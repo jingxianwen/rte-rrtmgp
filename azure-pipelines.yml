@@ -4,7 +4,7 @@ jobs:
   strategy:
     matrix:
       pgi_19_9_gpu:
-        compiler_module: PGI/19.9.0
+        compiler_module: PGI/19.9
         accel_module: cudatoolkit
         FCFLAGS: "-O3 -ta=tesla:cc60,cuda10.1 -Minfo -Mallocatable=03 -gopt -Minline,reshape,maxsize:40"
         RTE_KERNELS: openacc
@@ -15,7 +15,7 @@ jobs:
         FCFLAGS: "-O3 -acc                   -Minfo -Mallocatable=03 -gopt"
         RTE_KERNELS: openacc
       pgi_19_9_cpu:
-        compiler_module: PGI/19.9.0
+        compiler_module: PGI/19.9
         accel_module:
         # Error checking flags
         FCFLAGS: "-Mallocatable=03 -Mstandard -Mbounds -Mchkptr -Kieee -Mchkstk"
