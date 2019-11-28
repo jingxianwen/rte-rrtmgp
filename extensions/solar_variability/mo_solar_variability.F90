@@ -95,38 +95,33 @@ contains
   ! in the solar cycle. In other workds, the amplitude of the solar cycle is stretched
   ! to match the requested scaling at solar maximum.
   !
-  function solar_var_ind_interp(this,                      &
-                                solcycfrac, scon,          &
-                                irr_int, fac_int, spt_int, &
-                                fac_avg_ind, spt_avg_ind,  &
-                                fac_offset, spt_offset,    &
-                                mg_index, sb_index,        &
-                                tsi)                       &
+  function solar_var_ind_interp(this,                     &
+                                solcycfrac, scon,         &
+                                solar_quiet_int,          &
+                                solar_facular_int,        &
+                                solar_sunspot_int,        &
+                                mg_index, sb_index, tsi)  &
                                 result(error_msg)
 
-    class(ty_solar_var),        intent(in   ) :: this        ! Solar variability
-    real(wp),                   intent(in   ) :: solcycfrac  ! solar cycle fraction
-    real(wp), optional,         intent(in   ) :: scon        ! Solar constant (Wm-2)
-    real(wp),                   intent(in   ) :: irr_int     ! integrated quiet sun irradiance term
-    real(wp),                   intent(in   ) :: fac_int     ! integrated facular brightening irradiance
-    real(wp),                   intent(in   ) :: spt_int     ! integrated sunspot dimming irradiance
-    real(wp),                   intent(in   ) :: fac_avg_ind ! facular brightening average index for mean solar cycle
-    real(wp),                   intent(in   ) :: spt_avg_ind ! sunspot dimming average index for mean solar cycle
-    real(wp),                   intent(in   ) :: fac_offset  ! facular brightening offset term
-    real(wp),                   intent(in   ) :: spt_offset  ! sunspot dimming offset term
-    real(wp),                   intent(out  ) :: mg_index    ! Facular brightening NRLSSI2 index
+    class(ty_solar_var), intent(in   ) :: this               ! Solar variability
+    real(wp),            intent(in   ) :: solcycfrac         ! solar cycle fraction
+    real(wp), optional,  intent(in   ) :: scon               ! Solar constant (Wm-2)
+    real(wp),            intent(in   ) :: solar_quiet_int    ! integrated quiet sun irradiance term
+    real(wp),            intent(in   ) :: solar_facular_int  ! integrated facular brightening irradiance
+    real(wp),            intent(in   ) :: solar_sunspot_int  ! integrated sunspot dimming irradiance
+    real(wp),            intent(out  ) :: mg_index           ! Facular brightening NRLSSI2 index
                                                              ! interpolated from the mean solar cycle
                                                              ! to the provided solar cycle fraction
-    real(wp),                   intent(out  ) :: sb_index    ! Sunspot dimmng NRLSSI2 index
+    real(wp),            intent(out  ) :: sb_index           ! Sunspot dimmng NRLSSI2 index
                                                              ! interpolated from the mean solar cycle
                                                              ! to the provided solar cycle fraction
-    real(wp),                   intent(out  ) :: tsi         ! Total solar irradiance (in Wm-2) for 
+    real(wp),            intent(out  ) :: tsi                ! Total solar irradiance (in Wm-2) for 
                                                              ! either the default solar constant or the 
                                                              ! optional, user-provided solar constant 
                                                              ! adjusted to the derived facular and sunspot 
                                                              ! index values.
 
-    character(len=128)                        :: error_msg
+    character(len=128)                 :: error_msg
 
     ! ----------------------------------------------------------
     ! Local variables
@@ -138,9 +133,15 @@ contains
     real(wp) :: intrvl_len                               ! Fractional interval length of mgavgcyc and sbavgcyc
     real(wp) :: intrvl_len_hf                            ! Fractional half interval length of mgavgcyc and sbavgcyc
     real(wp) :: fraclo, frachi, intfrac                  ! Solar variability interpolation factors
-    real(wp) :: a_fac, b_spt, c_irr                         
+    real(wp) :: mg_default, sb_default
+
     ! ----------------------------------------------------------
+    ! Parameters
     !
+    real(wp), parameter :: a_offset = 0.1495954_wp
+    real(wp), parameter :: b_offset = 0.00066696_wp
+
+    ! ----------------------------------------------------------
     ! Error checking
     error_msg = ""
     !
@@ -206,14 +207,22 @@ contains
        endif
     endif
 
-  ! Derive tsi for derived facular and sunspot indices if scon provided
-    a_fac = (mg_index - fac_offset) / (fac_avg_ind - fac_offset)
-    b_spt = (sb_index - spt_offset) / (spt_avg_ind - spt_offset)
-    c_irr = 1.0_wp
+  ! Derive tsi for derived facular and sunspot indices
+    tsi = solar_quiet_int + &
+          (mg_index - a_offset) * solar_facular_int + &
+          (sb_index - b_offset) * solar_sunspot_int
+  ! Adjust tsi to scon if provided
+  ! Scale tsi with ratio of requested scon to the default tsi, which
+  ! is derived from the default mg_index and sb_index; the latter are 
+  ! calculated from the sum of the mg and sb LUTs excluding endpoints
     if (present(scon)) then
-       c_irr = (scon - fac_int - spt_int) / irr_int
+       mg_default = sum(this%avgcyc_ind(1,2:nsolfrac-1))/(nsolfrac-2)
+       sb_default = sum(this%avgcyc_ind(2,2:nsolfrac-1))/(nsolfrac-2)
+       tsi = tsi * &
+             scon / (solar_quiet_int + &
+                     (mg_default - a_offset) * solar_facular_int + &
+                     (sb_default - b_offset) * solar_sunspot_int)
     endif
-    tsi = c_irr * irr_int + a_fac * fac_int + b_spt * spt_int
 
   end function solar_var_ind_interp
   ! --------------------------------------------------------------------------------------
