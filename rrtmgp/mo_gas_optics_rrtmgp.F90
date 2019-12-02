@@ -1029,7 +1029,7 @@ contains
     ! Spectral solar irradiance terms init
     !
     ngpt = size(solar_quiet)
-    !$acc enter data create(solar_source_quiet,solar_source_facular,this%solar_source_sunspot)
+    !$acc enter data create(this%solar_source_quiet,this%solar_source_facular,this%solar_source_sunspot)
     allocate(this%solar_source_quiet(ngpt))
     allocate(this%solar_source_facular(ngpt))
     allocate(this%solar_source_sunspot(ngpt))
