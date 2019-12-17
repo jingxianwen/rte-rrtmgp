@@ -42,14 +42,11 @@ contains
   end subroutine
   !--------------------------------------------------------------------------------------------------------------------
   ! read optical coefficients from NetCDF file
-  subroutine load_and_init(kdist, filename, available_gases, &
-                           solar_quiet_int, solar_facular_int, solar_sunspot_int)
+  subroutine load_and_init(kdist, filename, available_gases)
+
     class(ty_gas_optics_rrtmgp), intent(inout) :: kdist
     character(len=*),     intent(in   ) :: filename
     class(ty_gas_concs),  intent(in   ) :: available_gases ! Which gases does the host model have available?
-    real(wp), optional ,  intent(inout) :: solar_quiet_int
-    real(wp), optional ,  intent(inout) :: solar_facular_int
-    real(wp), optional ,  intent(inout) :: solar_sunspot_int
     ! --------------------------------------------------
     !
     ! Variables that will be passed to gas_optics%load()
@@ -77,7 +74,6 @@ contains
     real(wp), dimension(:,:    ), allocatable :: totplnk
     real(wp), dimension(:,:,:,:), allocatable :: planck_frac
     real(wp), dimension(:      ), allocatable :: solar_quiet, solar_facular, solar_sunspot
-    real(wp)                                  :: solar_int
     real(wp)                                  :: tsi_default, mg_default, sb_default
     ! -----------------
     !
@@ -103,7 +99,7 @@ contains
     !
     ! How big are the various arrays?
     !
-    if(nf90_open(trim(fileName), NF90_NOWRITE, ncid) /= NF90_NOERR) &
+    if(nf90_open(trim(fileName), NF90_WRITE, ncid) /= NF90_NOERR) &
       call stop_on_err("load_and_init(): can't open file " // trim(fileName))
     ntemps            = get_dim_size(ncid,'temperature')
     npress            = get_dim_size(ncid,'pressure')
@@ -213,18 +209,12 @@ contains
       !
       allocate (solar_quiet(ngpts))
       solar_quiet = read_field(ncid, 'solar_source_quiet', ngpts)
-      call integrate_solar_irr(ngpts, solar_quiet, solar_int)
-      if (present(solar_quiet_int)) solar_quiet_int = solar_int
 
       allocate (solar_facular(ngpts))
       solar_facular = read_field(ncid, 'solar_source_facular', ngpts)
-      call integrate_solar_irr(ngpts, solar_facular, solar_int)
-      if (present(solar_facular_int)) solar_facular_int = solar_int
 
       allocate (solar_sunspot(ngpts))
       solar_sunspot = read_field(ncid, 'solar_source_sunspot', ngpts)
-      call integrate_solar_irr(ngpts, solar_sunspot, solar_int)
-      if (present(solar_sunspot_int)) solar_sunspot_int = solar_int
 
       tsi_default = read_field(ncid, 'tsi_default')
       mg_default = read_field(ncid, 'mg_default')
